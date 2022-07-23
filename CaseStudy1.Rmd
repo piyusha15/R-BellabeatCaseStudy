@@ -1,0 +1,490 @@
+---
+title: "CaseStudy_Bellabeat"
+author: "Piyusha"
+date: '2022-07-20'
+output:
+  html_document: default
+  word_document: default
+---
+# Bellabeat Case Study 
+
+### Scenario :
+I am a junior data analyst working on the marketing analyst team at Bellabeat, a high-tech manufacturer of health-focused products for women. Urška Sršen, co founder and Chief Creative Officer of Bellabeat, believes that analyzing smart device fitness data could help unlock new growth opportunities for the company. You have been asked to focus on one of Bellabeat’s products and analyze smart device data to gain insight into how consumers are using their smart devices. The insights you discover will then help guide marketing strategy for the company.
+
+### Phases of Data Analysis 
+1) Ask
+2) Prepare
+3) Process 
+4) Analyse 
+5) Share 
+6) Act 
+
+## Ask Phase 
+### Business Task 
+Find new growth opportunities for Bellabeat in the smart wellness devices market by analyzing smart device data to gain insights on the consumer’s usage of smart wellness devices. 
+
+### Key Stakeholders 
+* Urška Sršen – Cofounder 
+* Sando Mur – executive team member and cofounder
+
+## Prepare Phase 
+Key objectives of the prepare phase of Data Analysis :
+
+* Understand how data is generated and collected.
+* Identify and use different data formats, types, and structures.
+* Make sure data is unbiased and credible.
+* Organize and protect data.
+
+### About the dataset 
+FitBit Fitness Tracker Data (CC0: Public Domain, dataset made available through Mobius): This Kaggle data set contains personal fitness tracker from thirty fitbit users. Thirty eligible Fitbit users consented to the submission of personal tracker data, including minute-level output for physical activity, heart rate, and sleep monitoring. It includes information about daily activity, steps, and heart rate that can be used to explore users’ habits.
+
+### Exploring data to find limitations 
+
+```{r}
+#Installing and loading the necessary packages 
+#install.packages("tidyverse")
+#install.packages("sqldf") # I will be using a bit of SQL to query data 
+
+#install.packages("proto")   #this and the next two packages are for using sql
+#install.packages("RSQLite")
+#install.packages("gsubfun")
+
+library(tidyverse)
+library(readr)
+library(sqldf)
+library(dplyr)
+
+#Importing the data 
+
+
+activity<- read.csv("dailyActivity_merged.csv")
+
+steps <- read.csv("dailySteps_merged.csv")
+
+intensity <- read.csv("dailyIntensities_merged.csv")
+
+weight <- read.csv("weightLogInfo_merged.csv")
+
+calories <- read.csv("dailyCalories_merged.csv")
+
+sleep <- read.csv("sleepDay_merged.csv")
+
+#Checking the structure of imported data 
+str(activity)
+str(steps)
+str(intensity)
+str(sleep)
+
+
+library(dplyr)
+
+# n_distinct() function from dplyr package can also be used to find distinct IDs in dataframes
+
+n_distinct(activity$Id)
+n_distinct(steps$Id)
+n_distinct(intensity$Id)
+n_distinct(weight$Id)
+n_distinct(sleep$Id)
+
+
+```
+From this output we find that all the dates are in char format. We must convert them all to 'date' format and have same name for column containing date for all tables to make the data consistent. 
+That will be our first step while cleaning data in the next phase. 
+
+
+
+
+From n_distinct() output we can infer the following about consumer usage :
+
+1) Steps and Intensity data is available for all customers in the dataset.
+2) Only 24 % users provided weight data. 
+3) 27.28 % users did not record sleep data.
+
+
+So we decide not to use weight data for our analysis. 
+
+
+
+```{r cars}
+# On viewing all imported data frames, we observe that the data frames "calories" and "intensity" may be subsets of activity. We use SQL to find out if that is true. 
+
+#Following code performs leftjoin of calories and intensities table on activity table and returns the number of rows in the result. 
+
+sqldf("SELECT COUNT()
+      FROM activity 
+      LEFT JOIN calories ON 
+      activity.Id = calories.Id AND 
+      activity.ActivityDate = calories.ActivityDay AND 
+      activity.Calories = calories.Calories")
+
+sqldf("SELECT COUNT()
+      FROM activity 
+      LEFT JOIN steps  ON 
+      activity.Id = steps.Id AND 
+      activity.ActivityDate = steps.ActivityDay AND 
+      activity.Totalsteps = steps.StepTotal")
+
+sqldf("SELECT COUNT()
+      FROM activity 
+      LEFT JOIN intensity  ON 
+      activity.Id = intensity.Id AND 
+      activity.ActivityDate = intensity.ActivityDay AND 
+      activity.SedentaryMinutes = intensity.SedentaryMinutes AND
+      activity.LightlyActiveMinutes = intensity.LightlyActiveMinutes AND
+      activity.FairlyActiveMinutes = intensity.FairlyActiveMinutes AND
+      activity.VeryActiveMinutes = intensity.VeryActiveMinutes AND
+      activity.SedentaryActiveDistance = intensity.SedentaryActiveDistance AND
+      activity.LightActiveDistance = intensity.LightActiveDistance AND
+      activity.ModeratelyActiveDistance = intensity.ModeratelyActiveDistance AND
+      activity.VeryActiveDistance = intensity.VeryActiveDistance")
+
+
+```
+In the result output, we find that number of rows for all joins is the same i.e 940. So we remove these joins now so that we can use "activity" as a single dataframe. 
+
+```{r}
+rm(calories,intensity,steps)
+
+# Just checking to make sure they've been removed 
+colnames(activity)
+```
+### Limitations of this data 
+As mentioned in the case study statement, there are limitations to this data. 
+Following are some of the most critical limitations : 
+
+1) No demographic information present. This is a womens brand so wome's data must be used for analysis.
+
+2) This data can be biased because it has information about only 33 users.
+
+3) The data seems outdated as it is from 2016 i.e five years ago. 
+
+4) Data is also from only two months – April and May. It is possible that different trends are observed in different seasons / times of the year. 
+
+5) All the data is not available and all the dates are not consistent. 
+
+
+
+## Process Phase 
+
+### Data cleaning 
+
+As mentioned before, the first step in cleaning data will be changing the inconsistent data into consistent data. 
+
+
+```{r }
+
+
+
+#Importing the data 
+
+activity<- read.csv("dailyActivity_merged.csv")
+
+steps <- read.csv("dailySteps_merged.csv")
+
+intensity <- read.csv("dailyIntensities_merged.csv")
+
+weight <- read.csv("weightLogInfo_merged.csv")
+
+calories <- read.csv("dailyCalories_merged.csv")
+
+sleep <- read.csv("sleepDay_merged.csv")
+
+
+
+
+
+
+
+
+# We begin by renaming columns and chaning the format of date from char to 'date' 
+
+library(lubridate)  
+
+activity <- activity %>% 
+  rename(date= ActivityDate) %>%
+  mutate(date= mdy(date)) # as_date() must be used with mutate to convert char to date format 
+
+sleep <- sleep %>%
+  rename(date= SleepDay) %>%
+  mutate(date= as_date(date, format= "%m/%d/%Y  %I:%M:%S %p"))
+
+intensity <- intensity %>% 
+  rename(date= ActivityDay) %>% 
+  mutate(date = mdy(date))
+
+# Finding the number of duplicates and removing if they exist
+
+sum(duplicated(activity))
+sum(duplicated(sleep))
+sum(duplicated(intensity))
+
+
+```
+So there are duplicates in sleep data frame. We must remove them. 
+```{r}
+sleep <- distinct(sleep)
+
+# Checking if all duplicates are removed 
+
+sum(duplicated(sleep))
+
+```
+Now our data is consistent and free of duplicate rows. Further we will perform analysis on our data. We will use only 'activity' data frame to perform our analysis and plot it. For that, we must merge the 'sleep' data frame with 'activity'.
+
+```{r}
+final_activity <- merge(activity,sleep, by = c("Id","date"), all.x = TRUE)  # all.x = TRUE is used because we know that sleep has data for fewer users than total.
+
+
+```
+
+
+ 
+ 
+ 
+ 
+ 
+ 
+
+#Analyse Phase 
+
+In this phase we will summarize data to make data driven decisions to provide recommendations. 
+
+```{r}
+
+summary(final_activity)
+
+
+```
+Next, we'll see what percentage of the users whose data is available are active users. We well give a usage_type to each unique user ID using SQL 
+
+```{r}
+usage_df <- sqldf("select Id, LightlyActiveMinutes,SedentaryMinutes,         FairlyActiveMinutes,VeryActiveMinutes
+                  from activity ")
+
+
+usage_df <- usage_df %>% 
+  mutate(total_active_mins =LightlyActiveMinutes+FairlyActiveMinutes+VeryActiveMinutes, 
+         total_mins= total_active_mins + SedentaryMinutes
+         )
+
+usage_df <- sqldf("select Id, 
+  avg(total_active_mins) as avg_total_mins
+                  from usage_df 
+                  group by Id ")
+
+ mean(usage_df$avg_total_mins) # = 225.090
+
+ quantile(usage_df$avg_total_mins, probs = 0.9) #=312.6194
+
+# We use quantile() function to find the 90th percentile of avg_total_mins i.e average of active minutes for data available for each user.  
+
+
+# User data by active minutes. We will later use this calculation to plot a pie chart to visualise the findings for the stakeholders. 
+ 
+user_activity_type <- sqldf("select Id, avg_total_mins, 
+
+                    case
+                    
+                    when avg_total_mins < 225.090 then 'low activity'
+                    
+                    when avg_total_mins > 225.090 and avg_total_mins < 312.6194                                      then 'medium activity'
+                    
+                    when avg_total_mins > 312.6194 then 'high activity'
+                    end as user_activity_type 
+                    
+                    from usage_df 
+                    
+                    group by Id
+                    order by user_activity_type")
+
+
+# Now we will find user data by logging activity. We will find how many entries were made by each user in the given time period . This will enable us to see how much the customers use the device - we will sort users by usage_type ( fairly active, not active, very active ).
+
+usage_type <- activity %>% 
+  select(Id) %>%
+  group_by(Id) %>% 
+  summarise(num_of_entries = n()) %>%
+  mutate(usage_type = case_when(
+    num_of_entries >= 1 & num_of_entries <= 21 ~ "low usage",
+    num_of_entries >= 22 & num_of_entries <= 28 ~ "moderate usage", 
+    num_of_entries >= 28    ~ "high usage")) %>% 
+  arrange(usage_type)
+
+# value of 10th percentile of num_of_entries data is 21.20 and average of values is 28.48 Hence the choice of num_of_entries to segregate users. 
+
+# Further, we can create pie charts to illustrate the distribution of users by activity and usage. 
+
+# Chart to show the distribution of users by usage.
+
+## First we'll have to create a usage_dist data frame to store the usage data in a format that is appropriate for creation of pie charts. 
+
+usage_dist <- usage_type %>% 
+  group_by(usage_type) %>%
+  summarise(users = n_distinct(Id)) %>% 
+  mutate(percent_dist = (users/sum(users))*100) %>% 
+  arrange(percent_dist)
+
+## Now create a plot
+
+install.packages("ggplot2")
+library(ggplot2)
+
+ypos = cumsum(usage_dist$percent_dist) - 0.5 * (usage_dist$percent_dist)
+
+
+usage_pie <- ggplot( data = usage_dist, aes(x = "", y = percent_dist, fill = usage_type)) + 
+  geom_bar(stat="identity", width=1, color="black") +
+  coord_polar("y", start= 0) +
+  geom_text(aes(x = "", y = ypos, label = paste0(round(percent_dist), "%")),     size = 3)+
+  labs(title="Distribution of users by usage", caption = " Usage is calculated according to the number of entries made by users") + 
+  theme(
+      panel.background = element_blank(),
+      axis.line = element_blank(),
+      axis.text = element_blank(),
+      axis.title = element_blank(),
+      axis.ticks =element_blank())+
+      guides(fill = guide_legend(title = "Usage level")) +
+      scale_fill_manual(values=c("purple1", "purple4", "purple3"))
+      
+usage_pie
+```
+Now we'll plot a pie chart to show distribution of users by activity.
+
+```{r}
+# Transform activity data into a form from which pie chart can be created.
+activity_dist <- user_activity_type %>% 
+  group_by(user_activity_type) %>%
+  summarise(users = n_distinct(Id)) %>% 
+  mutate(activity_dist = (users/sum(users))*100) %>% 
+  arrange(activity_dist)
+
+ypos2 = cumsum(activity_dist$activity_dist) - 0.5*(activity_dist$activity_dist)
+
+ypos2 = 100- ypos2
+
+activity_pie <- ggplot( data = activity_dist, aes(x = "", y = activity_dist, fill = user_activity_type)) + 
+  geom_bar(stat="identity", width=1, color="black") +
+  coord_polar("y", start= 0) +
+  geom_text(aes(x = "", y = ypos2, label = paste0(round(activity_dist), "%")),     size = 3)+
+  labs(title="Distribution of users by activity", caption = "Activity type is calculated as the average of total activity of each user each day") + 
+  theme(
+      panel.background = element_blank(),
+      plot.caption = element_text(angle = 0, vjust = 5, size = 8),
+      axis.line = element_blank(),
+      axis.text = element_blank(),
+      axis.title = element_blank(),
+      axis.ticks =element_blank())+
+      guides(fill = guide_legend(title = "Activity level")) +
+      scale_fill_manual(values=c("yellow1", "yellow4", "yellow3"))
+      
+activity_pie
+```
+
+Now we wish to find daily trends in activity, intensity and sleep. 
+For this, we will create a new data frame for all the daily data. 
+
+```{r}
+daily_data <- left_join(activity,sleep, by = c("Id", "date"))
+
+calories_per_user <- sqldf("select Id, 
+                           avg(calories) as avg_calories_pd
+                           from calories 
+                           group by Id")
+
+activity_calories <- left_join(user_activity_type,calories_per_user, by = c("Id"))
+
+
+
+# Now we will use the above data frame to plot calories burnt according to usertype. 
+
+activity_calories_plot<- ggplot(data = activity_calories, aes(avg_calories_pd,user_activity_type, fill = user_activity_type))+
+  geom_point(stat = "identity")+
+  geom_boxplot(stat = "boxplot")+
+  scale_fill_manual(values=c("peachpuff1", "pink3", "plum2"))
+  
+
+activity_calories_plot
+```
+Now we will plots the steps taken by users per week day. We will also plot average of active minutes per weekday to get an idea of which week days are the most active. 
+
+```{r}
+#plotting steps taken by users pper weekday. 
+# We will use the daily_data table to create another daily_data_weekdays table for this analysis. 
+
+daily_data_weekdays <- daily_data %>% 
+  mutate(weekday = weekdays(date)) %>%
+  group_by(weekday) %>% 
+  summarize(average_steps= mean(TotalSteps))
+
+# Now we use ggplot2 to plot weekdays Vs steps 
+
+weekdays_steps <- ggplot(daily_data_weekdays, aes(x=weekday,y=average_steps))+ geom_bar(stat = "identity", color= "green", fill = "steelblue") + theme_minimal() + geom_text(aes(label= round(average_steps)), vjust=1.6, color="white", size=3.5)+
+labs(title="Steps per weekday", x="Weekday", y = "Steps")
+
+weekdays_steps
+
+```
+The plot shows that most steps were taken on the weekend.
+
+Now we find the relationship between activity, calories burnt and usertype. For this, we must first create a data frame in which all the required data is present. 
+
+We join activity_calories table with usage_table table using sql query.
+
+```{r}
+activity_cal_usage <- left_join(activity_calories,usage_type, by = "Id")
+
+# Now we isolate only the required columns from activity_cal_usage using sql 
+
+activity_cal_usage <- sqldf("select id, avg_total_mins, usage_type,user_activity_type, avg_calories_pd
+                            from activity_cal_usage")
+
+# Now we can plot to find the relationship between relationship between activity, calories burned, and user type
+
+
+
+activity_cal_usage_plot<-  ggplot(activity_cal_usage , aes(avg_total_mins  , avg_calories_pd,colour = user_activity_type))+geom_point()+
+  facet_wrap(~usage_type)+ 
+  theme(plot.title = element_text(size = 10),
+        plot.subtitle = element_text(size = 8),
+          plot.caption = element_text(size = 8),
+          axis.title  = element_text(size = 8),
+          axis.text.x = element_text(size = 8),
+          axis.text.y  = element_text(size = 8))+
+  xlab("Minutes Active")+
+  ylab("Calories Burned")+
+  labs(titles = "Relationship between calories burnt, usage type and   activity type ") + 
+  scale_color_manual(values=c("red","yellow", "orange"))
+                     
+activity_cal_usage_plot
+
+```
+Inference : From this plot, we can say that :
+1) In the case of high usage members, highly active members burn less calories than morderately active members. This could mean that although their activity level is high, their intensity could be low. Thus, they burn less calories. Thus, more data must be collected to evaluate this trend further. 
+2) We find an obvious trend in morderate users of the device. In this facet, we can see that calories burnt increase with their activity type. 
+
+However, an important point to consider is that the data in consideration here is only for 33 people. Hence, these trends may be based on biased data.
+
+## Act phase 
+
+The following reccomendations can be made to stakeholders based on our analysis :
+ 
+1) Only 24 % users provided weight data so providing weight data must be made mandatory to all users because it   also affects the analysis of other health- related data for the benefit of user. Information about weight can enable Bellabeat app to reccomend personilised fitness paths to follow to its users. 
+
+2) Bellabeat can invest in R&D for sleep tracking in particular because a vast majority (73%) of users show an interest in sleep tracking.They can also motivate users to track their sleep and provide them more insights on their sleep Vs activity level. 
+
+3) Include more default tracking metrics in its line of devices to gather more, useful data about user fitness.
+
+4) We find that most of the users in the study were moderate users i.e the number of entries available for them was moderate as compared to other users. Thus bellabeat app must prompt and motivate users to track their usage more for better health.
+
+5) Bellabeat could group their users according to their activity-level by providing badges and reccomend fitness data accordinly. They could also track consider the intensity of their activity to make the reccomendations more personalised and accurate. 
+
+6) According to our analysis, on an average, users take the least steps on Sundays. Thus, b
+
+
+
+
+
+
+
+
+
