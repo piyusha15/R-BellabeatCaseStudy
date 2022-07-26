@@ -4,7 +4,7 @@ This case study was a part of the Google Data Analytics Professional certificate
 
 The data analysis process includes 6 phases :
 1) Ask - ask effective questions and define the problem 
-2) Prepare - identify the different data strcutures, formats and types present in your data. Make sure data is credible, unbaised and secured.
+2) Prepare - identify the different data structures, formats and types present in your data. Make sure data is credible, unbaised and secured.
 3) Process - this process involves cleanings and tronsforming data 
 4) Analyse - sort and filter data to identify patterns and draw conclusions. Data- driven decisions can be made based on these conclusions and reccomendations can be provided.
 5) Share - create data visualisations to bring data to life. Use effective communication to help stakeholders understand the results. 
